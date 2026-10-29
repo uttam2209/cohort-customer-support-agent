@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Support</title>
+  <style>
+    body { font-family: sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.4rem; margin-bottom: 1rem; }
+    label { display: block; margin-bottom: .5rem; font-weight: bold; }
+    select, input[type="text"] { width: 100%; padding: .5rem; margin-bottom: 1rem; box-sizing: border-box; }
+    button { padding: .5rem 1.2rem; cursor: pointer; }
+    #chat-log { margin-top: 1.5rem; border-top: 1px solid #ccc; padding-top: 1rem; }
+    .msg { margin: .5rem 0; padding: .5rem .75rem; border-radius: 6px; max-width: 85%; }
+    .user { background: #dbeafe; margin-left: auto; text-align: right; }
+    .agent { background: #f3f4f6; }
+    .approval-notice {
+      background: #fef9c3; border: 1px solid #ca8a04;
+      border-radius: 6px; padding: .75rem; margin-top: .75rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Customer Support Chat</h1>
+
+  <label for="customer-select">Logged in as:</label>
+  <select id="customer-select">
+    <option value="CUST-001">CUST-001 — Jane Doe</option>
+    <option value="CUST-002">CUST-002 — Bob Smith</option>
+    <option value="CUST-003">CUST-003 — Alice Johnson</option>
+    <option value="CUST-004">CUST-004 — Carlos Rivera</option>
+    <option value="CUST-005">CUST-005 — Emily Chen</option>
+  </select>
+
+  <label for="message-input">Message:</label>
+  <div style="display:flex;gap:.5rem;">
+    <input type="text" id="message-input" placeholder="e.g. Where is ORD-003?" />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <div id="chat-log"></div>
+
+  <script>
+    async function sendMessage() {
+      const customerId = document.getElementById('customer-select').value;
+      const input = document.getElementById('message-input');
+      const message = input.value.trim();
+      if (!message) return;
+
+      appendMessage(message, 'user');
+      input.value = '';
+
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_id: customerId, message }),
+      });
+      const data = await res.json();
+
+      if (data.reply) {
+        appendMessage(data.reply, 'agent');
+      } else if (data.pending_approval) {
+        const notice = document.createElement('div');
+        notice.className = 'approval-notice';
+        notice.innerHTML =
+          `<strong>Awaiting approval</strong><br>` +
+          `Action: <code>${data.pending_approval.action}</code><br>` +
+          `ID: <code>${data.pending_approval.approval_id}</code><br>` +
+          `<a href="/approvals" target="_blank">Open approvals dashboard →</a>`;
+        document.getElementById('chat-log').appendChild(notice);
+      }
+    }
+
+    function appendMessage(text, role) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      div.textContent = text;
+      document.getElementById('chat-log').appendChild(div);
+    }
+
+    document.getElementById('message-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') sendMessage();
+    });
+  </script>
+</body>
+</html>

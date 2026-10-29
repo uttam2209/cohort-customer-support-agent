@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Approvals Dashboard</title>
+  <style>
+    body { font-family: sans-serif; max-width: 820px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.4rem; margin-bottom: 1.5rem; }
+    .card {
+      border: 1px solid #e5e7eb; border-radius: 8px;
+      padding: 1rem 1.25rem; margin-bottom: 1rem;
+      background: #fff;
+    }
+    .card h3 { margin: 0 0 .5rem; font-size: 1rem; }
+    .meta { font-size: .875rem; color: #6b7280; margin-bottom: .75rem; }
+    .payload { background: #f9fafb; padding: .5rem; border-radius: 4px; font-size: .85rem; margin-bottom: .75rem; }
+    .actions { display: flex; gap: .5rem; }
+    button.approve { background: #16a34a; color: #fff; border: none; padding: .45rem 1rem; border-radius: 4px; cursor: pointer; }
+    button.reject  { background: #dc2626; color: #fff; border: none; padding: .45rem 1rem; border-radius: 4px; cursor: pointer; }
+    .empty { color: #6b7280; font-style: italic; }
+    .card.expired { background: #f3f4f6; opacity: 0.65; }
+    .badge-expired { display: inline-block; background: #6b7280; color: #fff; font-size: .75rem; padding: .15rem .5rem; border-radius: 4px; margin-bottom: .5rem; letter-spacing: .03em; }
+    .section-heading { font-size: 1rem; color: #6b7280; margin: 2rem 0 .75rem; border-top: 1px solid #e5e7eb; padding-top: 1.25rem; }
+    .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #1f2937; color: #fff;
+             padding: .75rem 1.25rem; border-radius: 6px; display: none; }
+  </style>
+</head>
+<body>
+  <h1>Approvals Dashboard</h1>
+
+  {% if pending %}
+    {% for item in pending %}
+    <div class="card" id="card-{{ item.approval_id }}">
+      <h3>{{ item.action | replace('_', ' ') | title }}</h3>
+      <div class="meta">
+        ID: <code>{{ item.approval_id }}</code> &nbsp;|&nbsp;
+        Customer thread: <code>{{ item.thread_id }}</code>
+      </div>
+      <div class="payload">
+        {% for k, v in item.payload.items() %}
+          <strong>{{ k }}:</strong> {{ v }}&nbsp;&nbsp;
+        {% endfor %}
+      </div>
+      <div class="actions">
+        <button class="approve" onclick="decide('{{ item.approval_id }}', 'approved', '{{ item.token }}')">Approve</button>
+        <button class="reject"  onclick="decide('{{ item.approval_id }}', 'rejected', '{{ item.token }}')">Reject</button>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="empty">No pending approvals.</p>
+  {% endif %}
+
+  {% if expired %}
+    <h2 class="section-heading">Expired</h2>
+    {% for item in expired %}
+    <div class="card expired">
+      <span class="badge-expired">Expired</span>
+      <h3>{{ item.action | replace('_', ' ') | title }}</h3>
+      <div class="meta">
+        ID: <code>{{ item.approval_id }}</code> &nbsp;|&nbsp;
+        Customer thread: <code>{{ item.thread_id }}</code>
+      </div>
+      <div class="payload">
+        {% for k, v in item.payload.items() %}
+          <strong>{{ k }}:</strong> {{ v }}&nbsp;&nbsp;
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    async function decide(approvalId, decision, token) {
+      const res = await fetch(`/approvals/${approvalId}/decide`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, token }),
+      });
+      if (res.ok) {
+        document.getElementById(`card-${approvalId}`).remove();
+        showToast(`${decision.charAt(0).toUpperCase() + decision.slice(1)}: ${approvalId}`);
+      } else {
+        showToast('Error — see console', '#dc2626');
+        console.error(await res.text());
+      }
+    }
+
+    function showToast(msg, bg = '#16a34a') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.background = bg;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 3000);
+    }
+  </script>
+</body>
+</html>
