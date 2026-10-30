@@ -7,3 +7,4 @@ __pycache__/
 info.txt
 .DS_Store
 qna.html
+.archify/
